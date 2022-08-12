@@ -98,12 +98,14 @@ export async function readContract(arweave: Arweave, contractId: string, height 
       swGlobal._activeTx = txInfos[i];
 
       const result = await execute(handler, interaction, state);
-      
-      if (result.type === 'exception') {
+      //** Skips exceptions and error for vouched function call */
+      const vouchCall = contractId === "ZGaL5DOMIYRw9YHZ_NZ2JoIjST1QwhiD6T1jePH381I"
+
+      if (result.type === 'exception' && !vouchCall) {
         console.warn(`${result.result}`);
         console.warn(`Executing of interaction: ${txInfos[i].id} threw exception.`);
       }
-      if (result.type === 'error') {
+      if (result.type === 'error' && !vouchCall) {
         console.warn(`${result.result}`);
         console.warn(`Executing of interaction: ${txInfos[i].id} returned error.`);
       }

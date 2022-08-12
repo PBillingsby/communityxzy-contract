@@ -11,7 +11,7 @@ import {
 declare const ContractError: any;
 declare const SmartWeave: any;
 
-export function handle(state: StateInterface, action: ActionInterface): { state: StateInterface } | { result: any } {
+export async function handle(state: StateInterface, action: ActionInterface): Promise<{ state: StateInterface } | { result: any }> {
   const settings: Map<string, any> = new Map(state.settings);
   const balances: BalancesInterface = state.balances;
   const vault: VaultInterface = state.vault;
@@ -544,6 +544,20 @@ export function handle(state: StateInterface, action: ActionInterface): { state:
     }
 
     return { result: { target, role } };
+  }
+
+  /** Vouch function */ 
+  if(input.function === 'vouched') {
+    try {
+      const vouchedAddresses = {};
+      const contract = await SmartWeave.contracts.readContractState("ZGaL5DOMIYRw9YHZ_NZ2JoIjST1QwhiD6T1jePH381I")
+      contract?.votes.map((vote: object) => {
+        vouchedAddresses[vote['value']] = true;
+      })
+      return { result: vouchedAddresses };
+    } catch (err) {
+      throw new ContractError('Something went wrong');
+    }
   }
 
   function isArweaveAddress(addy: string) {

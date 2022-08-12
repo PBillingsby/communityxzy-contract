@@ -15,6 +15,8 @@ let state: StateInterface = JSON.parse(fs.readFileSync('./src/contract.json', 'u
 
 let { handler, swGlobal } = createContractExecutionEnvironment(arweave, handle.toString(), 'bYz5YKzHH97983nS8UWtqjrlhBHekyy-kvHt_eBxBBY');
 
+jest.setTimeout(30000);
+
 const addresses = {
   admin: 'uhE-QeYS8i4pmUtnxQyHD7dzXFNaJ9oMK-IM-QPNY6M',
   user: 'VAg65x9jNSfO9KQHdd3tfx1vQa8qyCyJ_uj7QcxNLDk',
@@ -24,8 +26,8 @@ const addresses = {
 describe('Transfer Balances', () => {
   const func = 'transfer';
 
-  it(`should transfer from ${addresses.admin} to ${addresses.user}`, () => {
-    handler(state, {input: {
+  it(`should transfer from ${addresses.admin} to ${addresses.user}`, async () => {
+    await handler(state, {input: {
       function: func,
       target: addresses.user,
       qty: 1000
@@ -36,9 +38,9 @@ describe('Transfer Balances', () => {
     expect(state.balances[addresses.user]).toBe(1000);
   });
 
-  it('should fail, invalid address', () => {
+  it('should fail, invalid address', async () => {
     try {
-      handler(state, {input: {
+      await handler(state, {input: {
         function: func,
         target: addresses.user,
         qty: 100
@@ -51,9 +53,9 @@ describe('Transfer Balances', () => {
     expect(state.balances[addresses.nonuser]).toBeUndefined();
   });
 
-  it('should fail with not enough balance', () => {
+  it('should fail with not enough balance', async () => {
     try {
-      handler(state, {input: {
+      await handler(state, {input: {
         function: func,
         target: addresses.nonuser,
         qty: 1100
@@ -66,9 +68,9 @@ describe('Transfer Balances', () => {
     expect(state.balances[addresses.nonuser]).toBeUndefined();
   });
 
-  it('should fail with same target and caller', () => {
+  it('should fail with same target and caller', async () => {
     try {
-      handler(state, {input: {
+      await handler(state, {input: {
         function: func,
         target: addresses.user,
         qty: 1000
@@ -80,8 +82,8 @@ describe('Transfer Balances', () => {
     expect(state.balances[addresses.user]).toBe(1000);
   });
 
-  it(`should transfer from ${addresses.user} to ${addresses.admin}`, () => {
-    handler(state, {input: {
+  it(`should transfer from ${addresses.user} to ${addresses.admin}`, async () => {
+    await handler(state, {input: {
       function: 'transfer',
       target: addresses.admin,
       qty: 900
@@ -144,8 +146,8 @@ describe('Locking system', () => {
   const bal = 100;
   const lockLength = 5;
 
-  it('should increase the locked tokens length', () => {
-    handler(state, { input: { 
+  it('should increase the locked tokens length', async () => {
+    await handler(state, { input: { 
       function: 'increaseVault',
       id: 0,
       lockLength: 101
@@ -153,7 +155,7 @@ describe('Locking system', () => {
 
     expect(state.vault[addresses.admin][0].end).toBe(101);
 
-    handler(state, { input: { 
+    await handler(state, { input: { 
       function: 'increaseVault',
       id: 0,
       lockLength: 100
@@ -162,9 +164,9 @@ describe('Locking system', () => {
     expect(state.vault[addresses.admin][0].end).toBe(100);
   });
 
-  it(`should not lock ${bal} from ${addresses.admin}`, () => {
+  it(`should not lock ${bal} from ${addresses.admin}`, async () => {
     try {
-      handler(state, {input: {
+      await handler(state, {input: {
         function: 'lock',
         qty: bal,
         lockLength: 1,
@@ -176,10 +178,10 @@ describe('Locking system', () => {
     expect(state.vault[addresses.admin].length).toBe(1);
   });
 
-  it(`should lock ${bal} from ${addresses.admin}`, () => {
+  it(`should lock ${bal} from ${addresses.admin}`, async () => {
     const prevBal = state.balances[addresses.admin];
 
-    handler(state, {input: {
+    await handler(state, {input: {
       function: 'lock',
       qty: bal,
       lockLength
@@ -194,12 +196,12 @@ describe('Locking system', () => {
     expect(state.balances[addresses.admin]).toBe((prevBal - bal));
   });
 
-  it('should not allow unlock', () => {
-    handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
+  it('should not allow unlock', async () => {
+    await handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
     expect(state.vault[addresses.admin].length).toBe(2);
   });
 
-  it('should not allow unlock', () => {
+  it('should not allow unlock', async () => {
     swGlobal.block.increment();
     try {
       handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
@@ -209,23 +211,23 @@ describe('Locking system', () => {
     expect(state.vault[addresses.admin].length).toBe(2);
   });
 
-  it('should allow unlock', () => {
+  it('should allow unlock', async () => {
     const prevBal = state.balances[addresses.admin];
 
     for(let i = 0; i < 4; i++) {
       swGlobal.block.increment();
     }
-    handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
+    await handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
     expect(state.vault[addresses.admin].length).toBe(1);
     expect(state.balances[addresses.admin]).toBe((prevBal + bal));
   });
 
-  it('should allow a lock without giving a target', () => {
+  it('should allow a lock without giving a target', async () => {
     const lockLength = 5;
     const prevBal = state.balances[addresses.admin];
     const bal = 5;
 
-    handler(state, {input: {
+    await handler(state, {input: {
       function: 'lock',
       qty: bal,
       lockLength
@@ -235,16 +237,16 @@ describe('Locking system', () => {
     expect(state.balances[addresses.admin]).toBe(prevBal - bal);
   });
 
-  it('should not allow unlock', () => {
-    handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
+  it('should not allow unlock', async () => {
+    await handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
     expect(state.vault[addresses.admin].length).toBe(2);
   });
 
-  it('should allow 1 unlock', () => {
+  it('should allow 1 unlock', async () => {
     for(let i = 0; i < 5; i++) {
       swGlobal.block.increment();
     }
-    handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
+    await handler(state, {input: {function: 'unlock'}, caller: addresses.admin});
     expect(state.vault[addresses.admin].length).toBe(1);
   });
 
@@ -272,9 +274,9 @@ describe('Locking system', () => {
 describe('Propose a vote', () => {
   const func = 'propose';
 
-  it('should fail, not locked balance', () => {
+  it('should fail, not locked balance', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         type: 'mint',
         recipient: addresses.user,
@@ -289,9 +291,9 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(0);
   });
 
-  it('should fail, not part of the DAO', () => {
+  it('should fail, not part of the DAO', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         type: 'mint',
         recipient: addresses.nonuser,
@@ -305,9 +307,9 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(0);
   });
 
-  it('should fail, invalid vote type DAO', () => {
+  it('should fail, invalid vote type DAO', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         type: 'invalidFunction',
         recipient: addresses.user,
@@ -321,8 +323,8 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(0);
   });
 
-  it('should create a mint proposal', () => {
-    handler(state, { input: {
+  it('should create a mint proposal', async () => {
+    await handler(state, { input: {
       function: func,
       type: 'mint',
       recipient: addresses.user,
@@ -333,9 +335,9 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(1);
   });
 
-  it('should fail to create a mint proposal because of quantity', () => {
+  it('should fail to create a mint proposal because of quantity', async () => {
     try {
-      handler(state, {
+      await handler(state, {
         input: {
           function: func,
           type: 'mint',
@@ -351,8 +353,8 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(1);
   });
 
-  it('should create a mintLocked proposal', () => {
-    handler(state, { input: {
+  it('should create a mintLocked proposal', async () => {
+    await handler(state, { input: {
       function: func,
       type: 'mintLocked',
       recipient: addresses.user,
@@ -363,8 +365,8 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(2);
   });
 
-  it('should create a set quorum proposal', () => {
-    handler(state, { input: {
+  it('should create a set quorum proposal', async () => {
+    await handler(state, { input: {
       function: func,
       type: 'set',
       key: 'quorum',
@@ -375,8 +377,8 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(3);
   });
 
-  it('should create a inidicative proposal', () => {
-    handler(state, { input: {
+  it('should create a inidicative proposal', async () => {
+    await handler(state, { input: {
       function: func,
       type: 'indicative',
       note: 'Let\'s do this and that.'
@@ -385,9 +387,9 @@ describe('Propose a vote', () => {
     expect(state.votes.length).toBe(4);
   });
 
-  it('should not create a set proposal for balances', () => {
+  it('should not create a set proposal for balances', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         type: 'set',
         key: 'balances',
@@ -401,8 +403,8 @@ describe('Propose a vote', () => {
     expect(state.balances[addresses.admin]).toBeDefined();
   });
 
-  it('should create a set proposal for a role', () => {
-    handler(state, { input: {
+  it('should create a set proposal for a role', async () => {
+    await handler(state, { input: {
       function: func,
       type: 'set',
       key: 'role',
@@ -414,11 +416,11 @@ describe('Propose a vote', () => {
     expect(state.votes[(state.votes.length - 1)].value).toEqual('MAIN');
   });
 
-  it('should create a set proposal for a custom field', () => {
+  it('should create a set proposal for a custom field', async () => {
     let voteLength = state.votes.length;
 
     try {
-      handler(state, {input: {
+      await handler(state, {input: {
         function: func,
         type: 'set',
         key: 'customKey',
@@ -436,9 +438,9 @@ describe('Propose a vote', () => {
 describe('Votes', () => {
   const func = 'vote';
 
-  it('should fail, not enough locked balance', () => {
+  it('should fail, not enough locked balance', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         id: 0,
         cast: 'yay'
@@ -451,9 +453,9 @@ describe('Votes', () => {
     expect(state.votes[1].nays).toBe(0);
   });
 
-  it('should fail, not part of the DAO', () => {
+  it('should fail, not part of the DAO', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         id: 0,
         cast: 'yay'
@@ -466,8 +468,8 @@ describe('Votes', () => {
     expect(state.votes[1].nays).toBe(0);
   });
 
-  it('should vote yes on proposal', () => {
-    handler(state, { input: {
+  it('should vote yes on proposal', async () => {
+    await handler(state, { input: {
       function: func,
       id: 0,
       cast: 'yay'
@@ -477,8 +479,8 @@ describe('Votes', () => {
     expect(state.votes[0].nays).toBe(0);
   });
 
-  it('should vote no on proposal', () => {
-    handler(state, { input: {
+  it('should vote no on proposal', async () => {
+    await handler(state, { input: {
       function: func,
       id: 1,
       cast: 'nay'
@@ -488,9 +490,9 @@ describe('Votes', () => {
     expect(state.votes[1].nays).toBe(100000);
   });
 
-  it('should fail, already voted', () => {
+  it('should fail, already voted', async () => {
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         id: 0,
         cast: 'yay'
@@ -503,8 +505,8 @@ describe('Votes', () => {
     expect(state.votes[0].nays).toBe(0);
   });
 
-  it('should fail, voter locked amount is over', () => {
-    handler(state, { input: {
+  it('should fail, voter locked amount is over', async () => {
+    await handler(state, { input: {
       function: 'lock',
       qty: 50,
       lockLength: 10
@@ -513,7 +515,7 @@ describe('Votes', () => {
     swGlobal.block.increment(50);
 
     try { 
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         id: 0,
         cast: 'nay'
@@ -525,14 +527,14 @@ describe('Votes', () => {
     expect(state.votes[0].nays).toBe(0);
   });
 
-  it('should fail, locked balance was after proposal creation', () => {
+  it('should fail, locked balance was after proposal creation', async () => {
     swGlobal.block.increment();
 
-    handler(state, {input: {function: 'transfer', qty: 100, target: addresses.user}, caller: addresses.admin});
-    handler(state, {input: {function: 'lock', qty: 100, lockLength: 10}, caller: addresses.user});
+    await handler(state, {input: {function: 'transfer', qty: 100, target: addresses.user}, caller: addresses.admin});
+    await handler(state, {input: {function: 'lock', qty: 100, lockLength: 10}, caller: addresses.user});
 
     try {
-      handler(state, { input: { function: func, id: 2, cast: 'yay'}, caller: addresses.user});
+      await handler(state, { input: { function: func, id: 2, cast: 'yay'}, caller: addresses.user});
     } catch (err) {
       expect(err.name).toBe('ContractError');
     }
@@ -540,17 +542,17 @@ describe('Votes', () => {
     expect(state.votes[2].yays).toBe(0);
   });
 
-  it('should fail, vote period is over', () => {
+  it('should fail, vote period is over', async () => {
     swGlobal.block.increment(2000);
 
-    handler(state, { input: {
+    await handler(state, { input: {
       function: 'lock',
       qty: 50,
       lockLength: 10
     }, caller: addresses.user});
 
     try {
-      handler(state, { input: {
+      await handler(state, { input: {
         function: func,
         id: 0,
         cast: 'nay'
@@ -564,8 +566,8 @@ describe('Votes', () => {
 });
 
 describe('Finalize votes', () => {
-  it('should finalize a mint vote', () => {
-    handler(state, { input: {
+  it('should finalize a mint vote', async () => {
+    await handler(state, { input: {
       function: 'finalize',
       id: 0
     }, caller: addresses.admin });
@@ -573,8 +575,8 @@ describe('Finalize votes', () => {
     expect(state.votes[0].status).toBe('passed');
   });
 
-  it('should finalize a mintLocked with status failed', () => {
-    handler(state, { input: {
+  it('should finalize a mintLocked with status failed', async () => {
+    await handler(state, { input: {
       function: 'finalize',
       id: 1
     }, caller: addresses.admin });
@@ -582,23 +584,23 @@ describe('Finalize votes', () => {
     expect(state.votes[1].status).toBe('failed');
   });
 
-  it('should finalize an indicative with status quorumFailed', () => {
+  it('should finalize an indicative with status quorumFailed', async () => {
     // Increment to allow the proposal
     swGlobal.block.increment();
     
-    handler(state, {input: { function: 'propose', type: 'indicative', note: 'My note'}, caller: addresses.user});
-    handler(state, {input: {function: 'vote', id: (state.votes.length - 1), cast: 'yay'}, caller: addresses.user});
+    await handler(state, {input: { function: 'propose', type: 'indicative', note: 'My note'}, caller: addresses.user});
+    await handler(state, {input: {function: 'vote', id: (state.votes.length - 1), cast: 'yay'}, caller: addresses.user});
     swGlobal.block.increment(2000);
-    handler(state, { input: {function: 'finalize', id: (state.votes.length - 1)}, caller: addresses.user});
+    await handler(state, { input: {function: 'finalize', id: (state.votes.length - 1)}, caller: addresses.user});
 
     expect(state.votes[(state.votes.length - 1)].status).toBe('quorumFailed');
   });
 
-  it('should finalize and set a role', () => {
+  it('should finalize and set a role', async () => {
     // Manually faking a locked balance.
     state.vault[addresses.admin][0].end = 1000000;
 
-    handler(state, {input: { 
+    await handler(state, {input: { 
       function: 'propose', 
       type: 'set', 
       key: 'role',
@@ -608,9 +610,9 @@ describe('Finalize votes', () => {
     }, caller: addresses.user});
 
     const lastVoteId = state.votes.length - 1;
-    handler(state, {input: {function: 'vote', id: lastVoteId, cast: 'yay'}, caller: addresses.admin});
+    await handler(state, {input: {function: 'vote', id: lastVoteId, cast: 'yay'}, caller: addresses.admin});
     swGlobal.block.increment(2000);
-    handler(state, {input: {function: 'finalize', id: lastVoteId}, caller: addresses.user});
+    await handler(state, {input: {function: 'finalize', id: lastVoteId}, caller: addresses.user});
 
     expect(state.roles[addresses.admin]).toBe('MAIN');
   });
@@ -619,7 +621,7 @@ describe('Finalize votes', () => {
 describe('Transfer locked', () => {
   it(`should fail with invalid address`, async () => {
     try {
-      handler(state, {input: {
+      await handler(state, {input: {
         function: 'transferLocked',
         target: 'u2ikdjhsoijem',
         qty: 100,
@@ -634,7 +636,7 @@ describe('Transfer locked', () => {
 
   it(`should transfer locked balance`, async () => {
     const totalVault = Object.keys(state.vault[addresses.admin]).length;
-    handler(state, {input: {
+    await handler(state, {input: {
       function: 'transferLocked',
       target: addresses.admin,
       qty: 100,
@@ -642,5 +644,20 @@ describe('Transfer locked', () => {
     }, caller: addresses.user});
 
     expect(Object.keys(state.vault[addresses.admin]).length).toBe((totalVault+1));
+  });
+});
+
+describe('Vouched', () => {
+  it(`should return an object of all vouched addresses`, async () => {
+    try {
+      const res = await handler(state, {
+        input: {
+          function: 'vouched',
+        }, caller: addresses.user
+      });
+      expect(typeof res).toBe("object");
+    } catch (err) {
+      expect(err.name).toBe('ContractError');
+    }
   });
 });
